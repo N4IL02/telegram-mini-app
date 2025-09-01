@@ -172,6 +172,16 @@
     .controls{grid-template-columns:1fr; gap:12px}
   }
 </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.Telegram?.WebApp) {
+      const tg = Telegram.WebApp;
+      tg.expand(); // Разворачивает приложение на весь экран
+      console.log("Telegram WebApp SDK подключен");
+    }
+  });
+</script>
 </head>
 <body>
 <div class="wrap">
