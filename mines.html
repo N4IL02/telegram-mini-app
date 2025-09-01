@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0b1320" />
+<title>MASTER MINES BOT — Mines</title>
+
+<!-- Telegram WebApp SDK (безопасно, просто для корректной темы/высоты) -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1320;
+    --card:#0f1a2b;
+    --panel:#0e1728;
+    --panel2:#0a1322;
+    --tile1:#1aa0c7;
+    --tile2:#0d7594;
+    --glow:#35d0ff;
+    --btn1:#0b77ff;
+    --btn2:#2b8bff;
+    --accent:#ffb03a;
+    --safe-ring:rgba(53,208,255,.55);
+    --shadow:rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);}
+
+  body{
+    margin:0;
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    color:#e8f5ff;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:16px;
+    background:
+      radial-gradient(900px 600px at 50% -150px, #152742 0, rgba(21,39,66,0) 55%),
+      radial-gradient(600px 420px at -200px 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      radial-gradient(700px 500px at 120% 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      var(--bg);
+  }
+
+  /* каркас */
+  .shell{
+    width:100%;
+    max-width:460px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    animation: fadeIn .35s ease both;
+  }
+
+  /* шапка */
+  .top{
+    background:linear-gradient(180deg, #102036 0%, #0c182b 100%);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:16px;
+    padding:10px 12px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:
+      0 20px 50px -20px var(--shadow),
+      inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .top img{
+    width:28px;height:28px;border-radius:50%;
+    box-shadow:0 0 0 6px rgba(53,208,255,.06),
+               0 8px 20px -8px rgba(53,208,255,.45);
+  }
+  .title{
+    font-weight:800; letter-spacing:.2px; font-size:18px;
+    text-shadow:0 2px 10px rgba(53,208,255,.25);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* карточка игры */
+  .card{
+    background:linear-gradient(180deg, var(--card), #0a1527);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:18px;
+    padding:16px;
+    box-shadow:
+      0 30px 70px -25px var(--shadow),
+      inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  /* рамка вокруг сетки (glassy) */
+  .panel{
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:16px;
+    padding:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 6px 20px -12px rgba(0,0,0,.5);
+  }
+
+  /* сетка */
+  .grid-shell{
+    border-radius:16px;
+    padding:14px;
+    background:linear-gradient(180deg, #0d1a2f, #0a1527);
+    border:1px solid rgba(53,208,255,.10);
+    box-shadow:inset 0 18px 40px -18px rgba(0,0,0,.85);
+    animation: breathe 6s ease-in-out infinite;
+  }
+
+  .grid{
+    --size:5;
+    display:grid;
+    grid-template-columns:repeat(var(--size), 1fr);
+    gap:12px;
+  }
+
+  .cell{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:12px;
+    background:linear-gradient(180deg, var(--tile1) 0%, var(--tile2) 100%);
+    border:1px solid rgba(255,255,255,.06);
+    box-shadow:
+      inset 0 -10px 18px -10px rgba(0,0,0,.6),
+      inset 0 1px 0 rgba(255,255,255,.08),
+      0 10px 28px -16px rgba(0,0,0,.65);
+    overflow:hidden;
+    transform:translateZ(0);
+    transition:filter .15s ease, transform .12s ease, box-shadow .2s ease;
+  }
+  .cell:hover{ transform:translateY(-1px); filter:brightness(1.04); }
+
+  /* безопасные клетки — неоновый ореол */
+  .cell.safe{
+    box-shadow:
+      0 0 0 3px var(--safe-ring),
+      0 16px 36px -14px rgba(53,208,255,.45),
+      inset 0 1px 0 rgba(255,255,255,.08),
+      inset 0 -12px 22px -14px rgba(0,0,0,.7);
+  }
+
+  /* звезда — твоя картинка; появление «поп-ин» */
+  .cell.star::after{
+    content:"";
+    position:absolute; inset:18%;
+    background:url("zvezda.png") center/contain no-repeat;
+    filter: drop-shadow(0 10px 18px rgba(255,176,58,.35));
+    animation: pop .35s cubic-bezier(.2,.8,.2,1) both;
+    pointer-events:none;
+  }
+
+  /* управление */
+  .controls{
+    margin-top:14px;
+    display:grid; gap:12px;
+  }
+
+  .trap-picker{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+  }
+  .chip{
+    min-width:46px; height:44px;
+    padding:0 14px;
+    border-radius:12px; border:1px solid rgba(53,208,255,.18);
+    background:linear-gradient(180deg, #0f223d, #0e1c33);
+    color:#eaf6ff; font-weight:800; letter-spacing:.3px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .06s ease, filter .15s ease, outline-color .15s ease;
+  }
+  .chip:hover{ filter:brightness(1.08) }
+  .chip:active{ transform:translateY(1px) }
+  .chip.active{ outline:2px solid var(--glow) }
+
+  .play{
+    height:54px; border:none; border-radius:14px; cursor:pointer;
+    font-weight:900; letter-spacing:.4px; color:#fff;
+    background: linear-gradient(180deg, var(--btn1) 0%, var(--btn2) 100%);
+    box-shadow:
+      0 18px 40px -16px rgba(43,139,255,.55),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+    position:relative; overflow:hidden;
+    transition: transform .08s ease, filter .2s ease;
+  }
+  .play:active{ transform:translateY(1px) }
+  .play::before{
+    content:""; position:absolute; inset:-60%;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(255,255,255,.12), transparent 70%);
+    opacity:0; transform:scale(.8); pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .play:hover::before{ opacity:1; transform:scale(1); }
+
+  /* адаптив */
+  @media (max-width:420px){
+    .shell{gap:12px}
+    .top{padding:10px}
+    .title{font-size:16px}
+    .grid-shell{padding:12px}
+    .grid{gap:10px}
+    .chip{min-width:42px;height:42px}
+    .play{height:52px}
+  }
+
+  /* анимации */
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  @keyframes breathe {
+    0% { box-shadow: inset 0 18px 40px -18px rgba(0,0,0,.85), 0 0 0 0 rgba(53,208,255,.0) }
+    50%{ box-shadow: inset 0 18px 40px -18px rgba(0,0,0,.85), 0 0 18px 0 rgba(53,208,255,.08) }
+    100%{ box-shadow: inset 0 18px 40px -18px rgba(0,0,0,.85), 0 0 0 0 rgba(53,208,255,.0) }
+  }
+  @keyframes pop {
+    0% { transform:scale(.5) rotate(-8deg); opacity:0 }
+    60%{ transform:scale(1.05) rotate(2deg); opacity:1 }
+    100%{ transform:scale(1) rotate(0) }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <!-- Шапка -->
+    <div class="top">
+      <img src="telegram_icon.png" alt="Telegram" />
+      <div class="title">@master_mines_bot</div>
+    </div>
+
+    <!-- Карточка игры -->
+    <div class="card panel">
+      <div class="grid-shell">
+        <div id="grid" class="grid" aria-label="Mines grid 5x5"></div>
+      </div>
+
+      <div class="controls">
+        <div class="trap-picker" aria-label="Number of traps">
+          <div class="chip" data-traps="1">1</div>
+          <div class="chip active" data-traps="3">3</div>
+          <div class="chip" data-traps="5">5</div>
+          <div class="chip" data-traps="7">7</div>
+        </div>
+        <button id="btn-play" class="play" aria-label="Play prediction">Play</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Telegram WebApp: берём тему и растягиваем высоту
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.expand();
+    // при желании можно применять тёмную/светлую тему Telegram:
+    // const theme = Telegram.WebApp.colorScheme; // 'dark' | 'light'
+  }
+
+  const gridEl = document.getElementById('grid');
+  const SIZE = 5; // 5x5
+  let trapCount = 3;
+  let cells = [];
+
+  // Инициализация сетки
+  function initGrid(){
+    gridEl.innerHTML = '';
+    cells = [];
+    for (let i=0;i<SIZE*SIZE;i++){
+      const c = document.createElement('div');
+      c.className = 'cell';
+      cells.push(c);
+      gridEl.appendChild(c);
+    }
+  }
+
+  // Получить N уникальных индексов c перемешиванием
+  function pickUnique(total, count){
+    const arr = Array.from({length: total}, (_,i)=>i);
+    for (let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    return arr.slice(0, count);
+  }
+
+  // Выбор количества ловушек
+  document.querySelectorAll('.chip').forEach(ch => {
+    ch.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+      ch.classList.add('active');
+      trapCount = Number(ch.dataset.traps);
+    });
+  });
+
+  // Играть: ставим ловушки и подсвечиваем безопасные клетки (с анимацией звезды)
+  document.getElementById('btn-play').addEventListener('click', () => {
+    // очистить предыдущее
+    cells.forEach(el => el.classList.remove('safe','star'));
+
+    const total = SIZE*SIZE;
+    const traps = new Set(pickUnique(total, trapCount));
+
+    for (let i=0;i<total;i++){
+      if (!traps.has(i)) {
+        cells[i].classList.add('safe','star'); // неоновое кольцо + звезда с pop-анимацией
+      }
+    }
+  });
+
+  initGrid();
+</script>
+</body>
+</html>
