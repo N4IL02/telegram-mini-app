@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b1320" />
 <title>MASTER MINES BOT — Mines</title>
 
-<!-- Telegram WebApp SDK (безопасно, просто для корректной темы/высоты) -->
+<!-- Telegram WebApp SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
@@ -43,7 +43,6 @@
       var(--bg);
   }
 
-  /* каркас */
   .shell{
     width:100%;
     max-width:460px;
@@ -53,7 +52,6 @@
     animation: fadeIn .35s ease both;
   }
 
-  /* шапка */
   .top{
     background:linear-gradient(180deg, #102036 0%, #0c182b 100%);
     border:1px solid rgba(53,208,255,.12);
@@ -75,7 +73,6 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
-  /* карточка игры */
   .card{
     background:linear-gradient(180deg, var(--card), #0a1527);
     border:1px solid rgba(53,208,255,.12);
@@ -86,7 +83,6 @@
       inset 0 0 0 1px rgba(255,255,255,.02);
   }
 
-  /* рамка вокруг сетки (glassy) */
   .panel{
     background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
     border:1px solid rgba(53,208,255,.12);
@@ -95,7 +91,6 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 6px 20px -12px rgba(0,0,0,.5);
   }
 
-  /* сетка */
   .grid-shell{
     border-radius:16px;
     padding:14px;
@@ -128,7 +123,6 @@
   }
   .cell:hover{ transform:translateY(-1px); filter:brightness(1.04); }
 
-  /* безопасные клетки — неоновый ореол */
   .cell.safe{
     box-shadow:
       0 0 0 3px var(--safe-ring),
@@ -136,8 +130,6 @@
       inset 0 1px 0 rgba(255,255,255,.08),
       inset 0 -12px 22px -14px rgba(0,0,0,.7);
   }
-
-  /* звезда — твоя картинка; появление «поп-ин» */
   .cell.star::after{
     content:"";
     position:absolute; inset:18%;
@@ -147,18 +139,13 @@
     pointer-events:none;
   }
 
-  /* управление */
-  .controls{
-    margin-top:14px;
-    display:grid; gap:12px;
-  }
+  .controls{ margin-top:14px; display:grid; gap:12px; }
 
   .trap-picker{
     display:flex; align-items:center; justify-content:center; gap:10px;
   }
   .chip{
-    min-width:46px; height:44px;
-    padding:0 14px;
+    min-width:46px; height:44px; padding:0 14px;
     border-radius:12px; border:1px solid rgba(53,208,255,.18);
     background:linear-gradient(180deg, #0f223d, #0e1c33);
     color:#eaf6ff; font-weight:800; letter-spacing:.3px;
@@ -190,7 +177,6 @@
   }
   .play:hover::before{ opacity:1; transform:scale(1); }
 
-  /* адаптив */
   @media (max-width:420px){
     .shell{gap:12px}
     .top{padding:10px}
@@ -201,7 +187,6 @@
     .play{height:52px}
   }
 
-  /* анимации */
   @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
   @keyframes breathe {
     0% { box-shadow: inset 0 18px 40px -18px rgba(0,0,0,.85), 0 0 0 0 rgba(53,208,255,.0) }
@@ -217,13 +202,11 @@
 </head>
 <body>
   <div class="shell">
-    <!-- Шапка -->
     <div class="top">
       <img src="telegram_icon.png" alt="Telegram" />
       <div class="title">@master_mines_bot</div>
     </div>
 
-    <!-- Карточка игры -->
     <div class="card panel">
       <div class="grid-shell">
         <div id="grid" class="grid" aria-label="Mines grid 5x5"></div>
@@ -242,11 +225,8 @@
   </div>
 
 <script>
-  // Telegram WebApp: берём тему и растягиваем высоту
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.expand();
-    // при желании можно применять тёмную/светлую тему Telegram:
-    // const theme = Telegram.WebApp.colorScheme; // 'dark' | 'light'
   }
 
   const gridEl = document.getElementById('grid');
@@ -254,7 +234,10 @@
   let trapCount = 3;
   let cells = [];
 
-  // Инициализация сетки
+  // Диапазон доли подсказок от числа безопасных клеток
+  const HINT_MIN_RATIO = 0.35;
+  const HINT_MAX_RATIO = 0.65;
+
   function initGrid(){
     gridEl.innerHTML = '';
     cells = [];
@@ -266,7 +249,7 @@
     }
   }
 
-  // Получить N уникальных индексов c перемешиванием
+  // Перемешивание + уникальные индексы
   function pickUnique(total, count){
     const arr = Array.from({length: total}, (_,i)=>i);
     for (let i=arr.length-1;i>0;i--){
@@ -276,7 +259,6 @@
     return arr.slice(0, count);
   }
 
-  // Выбор количества ловушек
   document.querySelectorAll('.chip').forEach(ch => {
     ch.addEventListener('click', () => {
       document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
@@ -285,19 +267,35 @@
     });
   });
 
-  // Играть: ставим ловушки и подсвечиваем безопасные клетки (с анимацией звезды)
   document.getElementById('btn-play').addEventListener('click', () => {
-    // очистить предыдущее
+    // очистка
     cells.forEach(el => el.classList.remove('safe','star'));
 
     const total = SIZE*SIZE;
-    const traps = new Set(pickUnique(total, trapCount));
 
+    // ставим ловушки
+    const trapIdx = new Set(pickUnique(total, trapCount));
+
+    // собираем безопасные индексы
+    const safe = [];
     for (let i=0;i<total;i++){
-      if (!traps.has(i)) {
-        cells[i].classList.add('safe','star'); // неоновое кольцо + звезда с pop-анимацией
-      }
+      if (!trapIdx.has(i)) safe.push(i);
     }
+
+    // случайно выбираем ТОЛЬКО ЧАСТЬ безопасных клеток для подсказки
+    const minHints = Math.max(1, Math.floor(safe.length * HINT_MIN_RATIO));
+    const maxHints = Math.max(minHints, Math.floor(safe.length * HINT_MAX_RATIO));
+    const hintCount = Math.floor(Math.random() * (maxHints - minHints + 1)) + minHints;
+
+    // перемешаем safe и берём первые hintCount
+    for (let i=safe.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [safe[i], safe[j]] = [safe[j], safe[i]];
+    }
+    const hintIdx = safe.slice(0, hintCount);
+
+    // подсветим только hintIdx
+    hintIdx.forEach(i => cells[i].classList.add('safe','star'));
   });
 
   initGrid();
