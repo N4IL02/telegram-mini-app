@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MASTER MINES BOT • mini app</title>
+<style>
+  :root{
+    --bg:#0b1320;
+    --panel:#0f1a2b;
+    --panel-2:#101c30;
+    --tile:#1991b3;
+    --tile-deep:#0e6f8d;
+    --glow:#35d0ff;
+    --btn:#0a66ff;
+    --btn-2:#0f79ff;
+    --btn-text:#eaf6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    background: radial-gradient(1200px 800px at 50% -100px, #12233b 0%, var(--bg) 55%);
+    color:#cfe8ff;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+
+  /* ——— Shell ——— */
+  .wrap{min-height:100%; display:flex; align-items:center; justify-content:center; padding:28px}
+  .card{
+    width:min(1100px,100%);
+    background:linear-gradient(180deg, #0b1425, #0b1220);
+    border:1px solid #12233d;
+    border-radius:22px;
+    box-shadow:0 40px 80px -20px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.02);
+    padding:22px 22px 28px;
+  }
+
+  /* ——— Header (menu) ——— */
+  .header{
+    display:flex; align-items:center; gap:16px;
+    padding:14px 16px; border-radius:16px;
+    background:linear-gradient(180deg, #0f1b2f 0%, #0e182a 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .header .avatar{width:56px;height:56px;border-radius:12px;object-fit:cover;
+    box-shadow:0 0 0 6px rgba(53,208,255,.05), 0 10px 30px -6px rgba(53,208,255,.35)}
+  .header-title{display:flex;flex-direction:column;gap:2px}
+  .header-title .name{font-size:28px;font-weight:800;letter-spacing:.2px}
+  .header-sub{opacity:.65}
+
+  /* ——— Menu ——— */
+  .menu{ margin-top:16px; }
+  .game-row{
+    display:flex;align-items:center;gap:16px;
+    padding:16px;border-radius:16px;
+    background:linear-gradient(180deg, #0f1a2b, #0c1626);
+    border:1px solid #132743;
+    box-shadow:0 18px 40px -18px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  .game-row img.icon{width:68px;height:68px;border-radius:14px;object-fit:cover;
+    box-shadow:0 0 0 6px rgba(53,208,255,.05), 0 10px 30px -6px rgba(53,208,255,.3)}
+  .game-meta{flex:1}
+  .game-meta .title{font-size:26px;font-weight:800}
+  .game-meta .sub{opacity:.7}
+  .primary{
+    padding:14px 22px;border-radius:12px;border:none;cursor:pointer;
+    font-weight:700;letter-spacing:.3px;
+    background:linear-gradient(180deg, var(--btn) 0%, var(--btn-2) 100%);
+    color:var(--btn-text);
+    box-shadow:0 14px 30px -10px rgba(13,104,255,.7), inset 0 0 0 1px rgba(255,255,255,.08);
+    transition:transform .1s ease, filter .1s ease;
+  }
+  .primary:hover{filter:brightness(1.05)}
+  .primary:active{transform:translateY(1px)}
+
+  /* ——— Screens ——— */
+  .screen{display:none}
+  .screen.active{display:block}
+
+  /* ——— Game ——— */
+  .grid-wrap{
+    margin-top:20px;
+    background:radial-gradient(200px 120px at 50% -40px, #13233d 0%, #0b1425 60%);
+    border:1px solid #132743; border-radius:20px; padding:28px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02), 0 30px 60px -20px rgba(0,0,0,.55);
+  }
+  .grid{
+    --size:5;
+    display:grid; grid-template-columns:repeat(var(--size), 1fr);
+    gap:18px; padding:10px;
+    background:linear-gradient(180deg, #0d1a2f, #0a1527);
+    border-radius:18px; border:1px solid #122a48;
+    box-shadow:inset 0 20px 40px -20px rgba(0,0,0,.9);
+  }
+  .cell{
+    position:relative; aspect-ratio:1/1; border-radius:16px; overflow:hidden;
+    background:radial-gradient(120% 120% at 50% 20%, var(--tile) 0%, var(--tile-deep) 70%);
+    box-shadow:
+      inset 0 -10px 18px -10px rgba(0,0,0,.6),
+      inset 0 1px 0 rgba(255,255,255,.06),
+      0 10px 26px -12px rgba(0,0,0,.6);
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .cell.safe{
+    box-shadow:
+      0 0 0 3px rgba(53,208,255,.42),
+      0 14px 36px -14px rgba(53,208,255,.45),
+      inset 0 1px 0 rgba(255,255,255,.08),
+      inset 0 -12px 22px -14px rgba(0,0,0,.7);
+  }
+  .cell .star{
+    position:absolute; inset:18% 18% 18% 18%;
+    display:block; pointer-events:none;
+    background:url("zvezda.png") center/contain no-repeat;
+    filter: drop-shadow(0 10px 18px rgba(255,170,40,.45));
+    opacity:0; transform:scale(.7);
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .cell.safe .star{ opacity:1; transform:scale(1); }
+
+  /* ——— Controls ——— */
+  .controls{
+    margin-top:18px; padding:18px;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border:1px solid #122a48; border-radius:16px;
+    display:grid; grid-template-columns: 240px 1fr 140px; gap:16px;
+    align-items:center;
+  }
+  /* carousel */
+  .trap-carousel{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    font-weight:800; letter-spacing:.3px;
+  }
+  .arrow{
+    width:42px; height:42px; display:grid; place-items:center;
+    border-radius:10px; cursor:pointer; user-select:none;
+    background:linear-gradient(180deg,#0f223d,#0e1c33);
+    border:1px solid #1b3761; color:#cfe8ff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:filter .15s ease, transform .05s ease;
+  }
+  .arrow:active{transform:translateY(1px)}
+  .trap-value{
+    min-width:64px; height:42px; display:grid; place-items:center;
+    border-radius:12px; padding:0 10px;
+    background:linear-gradient(180deg,#103059,#0a2746);
+    border:1px solid #1b4a7a;
+    box-shadow:0 0 0 3px rgba(53,208,255,.12) inset;
+    color:#e8f6ff; font-size:18px;
+  }
+  .controls small{opacity:.7}
+
+  .play{
+    width:100%; height:56px;
+    border:none; border-radius:14px; cursor:pointer;
+    font-weight:800; letter-spacing:.4px;
+    background:linear-gradient(180deg, #0b77ff 0%, #2b8bff 100%);
+    color:var(--btn-text);
+    box-shadow:0 16px 36px -12px rgba(43,139,255,.55), inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .back{
+    width:100%; height:56px;
+    border:none; border-radius:14px; cursor:pointer;
+    background:linear-gradient(180deg, #b74b1f, #a43c11);
+    color:#fff; font-weight:800; letter-spacing:.4px;
+    box-shadow:0 12px 28px -12px rgba(180,70,20,.6), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  @media (max-width:720px){
+    .controls{grid-template-columns:1fr; gap:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+
+    <!-- ——— MENU ——— -->
+    <section id="screen-menu" class="screen active">
+      <div class="header">
+        <!-- клади рядом с index.html: photo_2025-09-01 03.17.40.jpeg -->
+        <img class="avatar" src="photo_2025-09-01 03.17.40.jpeg" alt="Bot avatar" />
+        <div class="header-title">
+          <div class="name">@master_mines_bot</div>
+          <div class="header-sub">MASTER MINES BOT • mini app</div>
+        </div>
+      </div>
+
+      <div class="menu" style="margin-top:18px">
+        <div class="game-row">
+          <!-- клади рядом с index.html: 1winmines.png -->
+          <img class="icon" src="1winmines.png" alt="Mines icon" />
+          <div class="game-meta">
+            <div class="title">Mines</div>
+            <div class="sub">Classic 5×5 field</div>
+          </div>
+          <button class="primary" id="open-mines">Open</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ——— GAME ——— -->
+    <section id="screen-game" class="screen" aria-live="polite">
+      <div class="grid-wrap">
+        <div id="grid" class="grid" aria-label="Mines grid 5x5"></div>
+      </div>
+
+      <div class="controls">
+        <!-- traps carousel -->
+        <div class="trap-carousel" aria-label="Traps">
+          <div class="arrow" id="left">◀</div>
+          <div>
+            <div class="trap-value" id="trapValue">3</div>
+            <small style="display:block;text-align:center;margin-top:6px">traps</small>
+          </div>
+          <div class="arrow" id="right">▶</div>
+        </div>
+
+        <button id="btn-play" class="play" aria-label="Play prediction">Play</button>
+        <button id="btn-back" class="back" aria-label="Back to menu">Back</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  // ——— Router ———
+  const scrMenu = document.getElementById('screen-menu');
+  const scrGame = document.getElementById('screen-game');
+  document.getElementById('open-mines').onclick = () => {
+    scrMenu.classList.remove('active'); scrGame.classList.add('active');
+    initGrid();
+  };
+  document.getElementById('btn-back').onclick = () => {
+    scrGame.classList.remove('active'); scrMenu.classList.add('active');
+  };
+
+  // ——— Game state ———
+  const gridEl = document.getElementById('grid');
+  const SIZE = 5; // 5x5
+  let trapOptions = [1,3,5,7];
+  let trapIndex = 1; // default 3
+  let cells = [];
+
+  // carousel handlers
+  const trapValue = document.getElementById('trapValue');
+  const updateTrapText = () => trapValue.textContent = trapOptions[trapIndex];
+  document.getElementById('left').onclick  = () => { trapIndex = (trapIndex + trapOptions.length - 1) % trapOptions.length; updateTrapText(); };
+  document.getElementById('right').onclick = () => { trapIndex = (trapIndex + 1) % trapOptions.length; updateTrapText(); };
+  updateTrapText();
+
+  function initGrid(){
+    gridEl.innerHTML = '';
+    cells = [];
+    for (let i=0;i<SIZE*SIZE;i++){
+      const c = document.createElement('div');
+      c.className = 'cell';
+      const star = document.createElement('span');
+      star.className = 'star';
+      c.appendChild(star);
+      cells.push(c);
+      gridEl.appendChild(c);
+    }
+  }
+
+  // helper: random unique indices
+  function pickUnique(total, count){
+    const idx = Array.from({length:total}, (_,i)=>i);
+    for (let i=idx.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [idx[i],idx[j]] = [idx[j],idx[i]];
+    }
+    return idx.slice(0,count);
+  }
+
+  // Play: подсвечиваем безопасные клетки звёздами (рандом)
+  document.getElementById('btn-play').addEventListener('click', () => {
+    // очистка прошлых подсветок
+    cells.forEach(el => el.classList.remove('safe'));
+
+    const total = SIZE*SIZE;
+    const trapCount = trapOptions[trapIndex];
+    const traps = new Set(pickUnique(total, trapCount));
+
+    // безопасные — всё, что не ловушки
+    for (let i=0;i<total;i++){
+      if (!traps.has(i)) cells[i].classList.add('safe');
+    }
+  });
+
+  // первый рендер
+  initGrid();
+</script>
+</body>
+</html>
