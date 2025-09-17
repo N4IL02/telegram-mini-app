@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0b1320" />
+<title>MASTER MINES BOT — Penalty</title>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1320;
+    --card:#0f1a2b;
+    --panel:#0e1728;
+    --panel2:#0a1322;
+    --glow:#35d0ff;
+    --btn1:#0b77ff;
+    --btn2:#2b8bff;
+    --ok:#35d0ff;
+    --shadow:rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);}
+  body{
+    margin:0; color:#e8f5ff;
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    padding:16px;
+    background:
+      radial-gradient(900px 600px at 50% -150px, #152742 0, rgba(21,39,66,0) 55%),
+      radial-gradient(600px 420px at -200px 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      radial-gradient(700px 500px at 120% 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      var(--bg);
+  }
+
+  .shell{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; animation:fadeIn .35s ease both; }
+
+  .top{
+    background:linear-gradient(180deg, #102036 0%, #0c182b 100%);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:16px;
+    padding:10px 12px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 20px 50px -20px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .top img{ width:28px;height:28px;border-radius:50%;
+    box-shadow:0 0 0 6px rgba(53,208,255,.06), 0 8px 20px -8px rgba(53,208,255,.45);
+  }
+  .title{ font-weight:800; letter-spacing:.2px; font-size:18px; text-shadow:0 2px 10px rgba(53,208,255,.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .back{
+    margin-right:4px; height:30px; padding:0 10px;
+    border-radius:10px; border:1px solid rgba(53,208,255,.18);
+    background:linear-gradient(180deg,#0f223d,#0e1c33);
+    color:#eaf6ff; font-weight:800; letter-spacing:.3px;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .06s ease, filter .15s ease;
+  }
+  .back:hover{ filter:brightness(1.08) }
+  .back:active{ transform:translateY(1px) }
+  .back svg{ width:14px; height:14px; }
+
+  .card{
+    background:linear-gradient(180deg, var(--card), #0a1527);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 30px 70px -25px var(--shadow), inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  /* ВОРОТА */
+  .goal{
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    height:270px;
+    background:
+      radial-gradient(800px 520px at 60% -120px, rgba(53,208,255,.10), transparent 60%),
+      linear-gradient(180deg, #0e1526, #0a1322);
+    border:1px solid rgba(53,208,255,.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 30px rgba(0,0,0,.35);
+  }
+
+  /* Рамка ворот */
+  .frame{
+    position:absolute; inset:12px;
+    border-radius:14px;
+    border:4px solid rgba(255,255,255,.92);
+    box-shadow: 0 8px 24px -10px rgba(0,0,0,.6);
+    pointer-events:none;
+  }
+
+  /* Сетка ворот (net) — контрастнее */
+  .net{
+    position:absolute; inset:20px;
+    background:
+      linear-gradient(to right, rgba(255,255,255,.12) 1px, transparent 1px) 0 0/36px 36px,
+      linear-gradient(to bottom, rgba(255,255,255,.12) 1px, transparent 1px) 0 0/36px 36px;
+    border-radius:10px;
+    pointer-events:none;
+    mix-blend-mode:screen;
+  }
+
+  /* 3x5 ячейки поверх сетки */
+  .cells{
+    position:absolute; inset:20px;
+    display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr);
+    gap:6px;
+  }
+
+  /* СДЕЛАНО ЯРЧЕ: чёткая граница и более светлый фон */
+  .cell{
+    position:relative; border-radius:10px;
+    background:
+      radial-gradient(60% 60% at 50% 50%, rgba(53,208,255,.12), rgba(0,0,0,0));
+    border:1.5px solid rgba(53,208,255,.22);
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.04),
+      0 6px 18px -12px rgba(0,0,0,.6);
+    transition: filter .15s ease, transform .08s ease, box-shadow .2s ease, outline-color .15s ease;
+  }
+  .cell:hover{ filter:brightness(1.08) }
+
+  /* Выбранная ячейка — яркая подсветка и «кольцо» */
+  .cell.target{
+    border-color: var(--ok);
+    box-shadow:
+      0 18px 40px -16px rgba(53,208,255,.65),
+      0 0 0 2px rgba(53,208,255,.25) inset,
+      0 0 0 2px rgba(53,208,255,.25);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  .cell.target::after{
+    content:""; position:absolute; inset:-6px; border-radius:12px;
+    box-shadow: 0 0 0 2px rgba(53,208,255,.55);
+    opacity:.85; pointer-events:none;
+  }
+
+  .controls{ margin-top:14px; display:grid; gap:12px; }
+  .play{
+    height:54px; border:none; border-radius:14px; cursor:pointer;
+    font-weight:900; letter-spacing:.4px; color:#fff;
+    background: linear-gradient(180deg, var(--btn1) 0%, var(--btn2) 100%);
+    box-shadow:0 18px 40px -16px rgba(43,139,255,.55), inset 0 0 0 1px rgba(255,255,255,.08);
+    position:relative; overflow:hidden;
+    transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+  }
+  .play:active{ transform:translateY(1px) }
+  .play::before{
+    content:""; position:absolute; inset:-60%;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(255,255,255,.12), transparent 70%);
+    opacity:0; transform:scale(.8); pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+  }
+  .play:hover::before{ opacity:1; transform:scale(1) }
+
+  @media (max-width:420px){
+    .shell{gap:12px}
+    .top{padding:10px}
+    .title{font-size:16px}
+    .play{height:52px}
+  }
+
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  @keyframes pulse {
+    0%{ transform:scale(1); box-shadow:0 18px 40px -16px rgba(53,208,255,.55) }
+    50%{ transform:scale(1.02); box-shadow:0 22px 48px -16px rgba(53,208,255,.8) }
+    100%{ transform:scale(1); box-shadow:0 18px 40px -16px rgba(53,208,255,.55) }
+  }
+
+  /* Визуально скрытый live-элемент для доступности (вместо удалённых ярлыков) */
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <button class="back" onclick="location.href='index.html'" aria-label="Back to menu">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#eaf6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back
+      </button>
+      <img src="telegram_icon.png" alt="Telegram" />
+      <div class="title">@master_mines_bot</div>
+    </div>
+
+    <div class="card">
+      <div class="goal" aria-label="Penalty prediction area">
+        <div class="frame"></div>
+        <div class="net"></div>
+
+        <!-- 3x5 сетка -->
+        <div id="cells" class="cells" aria-live="polite"></div>
+      </div>
+
+      <div class="controls">
+        <button id="btn" class="play" aria-label="Get penalty signal">GET SIGNAL</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Доступность: сюда пишем текст сигнала, но он не отображается -->
+<div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.expand();
+
+  const ROWS = 3, COLS = 5;
+  const cellsWrap = document.getElementById('cells');
+  const btn = document.getElementById('btn');
+  const live = document.getElementById('live');
+
+  // Создаём 3x5
+  const cells = [];
+  for (let r=0; r<ROWS; r++){
+    for (let c=0; c<COLS; c++){
+      const el = document.createElement('div');
+      el.className = 'cell';
+      el.dataset.r = r;
+      el.dataset.c = c;
+      cellsWrap.appendChild(el);
+      cells.push(el);
+    }
+  }
+
+  // Взвешенная вероятность (углы и верхние углы — чаще, центр — реже)
+  const weights = [
+    [1.25, 1.1, 0.8, 1.1, 1.25],   // Top row
+    [1.0,  0.9,  0.7, 0.9,  1.0],  // Middle row
+    [1.15, 1.0,  0.8, 1.0,  1.15]  // Bottom row
+  ];
+
+  const flatWeights = cells.map(el => weights[+el.dataset.r][+el.dataset.c]);
+
+  function chooseIndexWeighted(w){
+    const sum = w.reduce((a,b)=>a+b,0);
+    let x = Math.random()*sum;
+    for (let i=0;i<w.length;i++){ x-=w[i]; if (x<=0) return i; }
+    return w.length-1;
+  }
+
+  function idxToRC(i){ return {r: Math.floor(i/COLS), c: i%COLS}; }
+  function rcLabel(r,c){ return ['Top','Middle','Bottom'][r] + ' • Col ' + (c+1); }
+
+  function clearTargets(){ cells.forEach(el => el.classList.remove('target')); }
+
+  let lock = false;
+  btn.addEventListener('click', () => {
+    if (lock) return;
+    lock = true; btn.style.opacity = .85;
+
+    clearTargets();
+
+    setTimeout(() => {
+      const i = chooseIndexWeighted(flatWeights);
+      const {r,c} = idxToRC(i);
+      cells[i].classList.add('target');
+
+      // Обновляем невидимый live-текст (для screen-reader), на экране ничего не показываем
+      live.textContent = 'Shoot: ' + rcLabel(r,c);
+
+      lock = false; btn.style.opacity = 1;
+    }, 420);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0b1320" />
+<title>MASTER MINES BOT — Lucky Jet</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1320;
+    --card:#0f1a2b;
+    --panel:#0e1728;
+    --panel2:#0a1322;
+    --glow:#35d0ff;
+    --accent:#ff3a55;
+    --btn1:#0b77ff;
+    --btn2:#2b8bff;
+    --shadow:rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);}
+  body{
+    margin:0; color:#e8f5ff;
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    padding:16px;
+    background:
+      radial-gradient(900px 600px at 50% -150px, #152742 0, rgba(21,39,66,0) 55%),
+      radial-gradient(600px 420px at -200px 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      radial-gradient(700px 500px at 120% 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      var(--bg);
+  }
+
+  .shell{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; animation:fadeIn .35s ease both; }
+
+  .top{
+    background:linear-gradient(180deg, #102036 0%, #0c182b 100%);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:16px;
+    padding:10px 12px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 20px 50px -20px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .top img{ width:28px;height:28px;border-radius:50%;
+    box-shadow:0 0 0 6px rgba(53,208,255,.06), 0 8px 20px -8px rgba(53,208,255,.45);
+  }
+  .title{ font-weight:800; letter-spacing:.2px; font-size:18px; text-shadow:0 2px 10px rgba(53,208,255,.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .back{
+    margin-right:4px; height:30px; padding:0 10px;
+    border-radius:10px; border:1px solid rgba(53,208,255,.18);
+    background:linear-gradient(180deg,#0f223d,#0e1c33);
+    color:#eaf6ff; font-weight:800; letter-spacing:.3px;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .06s ease, filter .15s ease;
+  }
+  .back:hover{ filter:brightness(1.08) }
+  .back:active{ transform:translateY(1px) }
+  .back svg{ width:14px; height:14px; }
+
+  .card{
+    background:linear-gradient(180deg, var(--card), #0a1527);
+    border:1px solid rgba(53,208,255,.12);
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 30px 70px -25px var(--shadow), inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  /* Площадка полёта */
+  .sky{
+    position:relative; height:260px; border-radius:16px; overflow:hidden;
+    background:
+      radial-gradient(900px 600px at 50% -200px, #1a2336 0, rgba(26,35,54,0) 55%),
+      repeating-conic-gradient(from 0deg, #0b1222 0 15deg, #0c1426 15deg 30deg);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+
+  /* Красный клин: вершина по --p, правый край всегда заполнен */
+  .climb{
+    --p:0;
+    position:absolute; inset:0;
+    background: linear-gradient(90deg, rgba(255,58,85,.15), rgba(255,58,85,.35));
+    clip-path: polygon(0% 100%, 0% 100%, calc(var(--p)*100%) calc(100% - var(--p)*80%), 100% 100%);
+    transition: clip-path .9s cubic-bezier(.2,.8,.2,1);
+    filter: drop-shadow(0 12px 26px rgba(255,58,85,.35));
+  }
+
+  /* Ракетчик */
+  .jet{
+    --p:0;
+    position:absolute; left:0; bottom:0;
+    transform: translate(calc(var(--p)*100% - 26px), calc(-8px - var(--p)*80%)) rotate(-12deg);
+    width:64px; height:auto;
+    filter: drop-shadow(0 12px 26px rgba(255,58,85,.45));
+    transition: transform .9s cubic-bezier(.2,.8,.2,1), opacity .2s ease;
+    opacity:0; /* скрыт до старта, чтобы не торчал в углу */
+    pointer-events:none;
+  }
+
+  .big{
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-weight:900; font-size:72px; letter-spacing:.5px;
+    color:#ffffff; text-shadow:0 10px 40px rgba(0,0,0,.45), 0 0 40px rgba(255,255,255,.08);
+    user-select:none; pointer-events:none;
+  }
+  .big.bump{ animation: bump .35s ease }
+  .label{
+    position:absolute; right:12px; bottom:12px; font-size:12px; opacity:.8;
+    background:rgba(0,0,0,.28);
+    border:1px solid rgba(255,255,255,.10);
+    padding:6px 8px; border-radius:10px;
+    backdrop-filter: blur(6px);
+  }
+
+  .controls{ margin-top:14px; display:grid; gap:12px; }
+  .play{
+    height:54px; border:none; border-radius:14px; cursor:pointer;
+    font-weight:900; letter-spacing:.4px; color:#fff;
+    background: linear-gradient(180deg, var(--btn1) 0%, var(--btn2) 100%);
+    box-shadow:0 18px 40px -16px rgba(43,139,255,.55), inset 0 0 0 1px rgba(255,255,255,.08);
+    position:relative; overflow:hidden;
+    transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+  }
+  .play:active{ transform:translateY(1px) }
+  .play::before{
+    content:""; position:absolute; inset:-60%;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(255,255,255,.12), transparent 70%);
+    opacity:0; transform:scale(.8); pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+  }
+  .play:hover::before{ opacity:1; transform:scale(1) }
+
+  @media (max-width:420px){
+    .shell{gap:12px}
+    .top{padding:10px}
+    .title{font-size:16px}
+    .play{height:52px}
+    .big{font-size:64px}
+  }
+
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  @keyframes bump { 0%{ transform:scale(.9); opacity:.9 } 70%{ transform:scale(1.06) } 100%{ transform:scale(1); opacity:1 } }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <button class="back" onclick="location.href='index.html'" aria-label="Back to menu">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#eaf6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back
+      </button>
+      <img src="telegram_icon.png" alt="Telegram" />
+      <div class="title">@master_mines_bot</div>
+    </div>
+
+    <div class="card">
+      <div class="sky" aria-live="polite" aria-label="Lucky Jet prediction area">
+        <div id="climb" class="climb" style="--p:0"></div>
+
+        <!-- Твой PNG персонажа -->
+        <img id="jet" class="jet" src="lucky signal.png" alt="Lucky Jet">
+
+        <div id="big" class="big">?</div>
+        <div id="quality" class="label">Signal: —</div>
+      </div>
+
+      <div class="controls">
+        <button id="btn" class="play" aria-label="Get signal">GET SIGNAL</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.expand();
+
+  const btn = document.getElementById('btn');
+  const big = document.getElementById('big');
+  const climb = document.getElementById('climb');
+  const jet = document.getElementById('jet');
+  const quality = document.getElementById('quality');
+
+  function weightedMultiplier(){
+    const r = Math.random();
+    let min,max;
+    if (r < 0.55){ min=1.00; max=2.50; }
+    else if (r < 0.85){ min=2.51; max=4.00; }
+    else if (r < 0.97){ min=4.01; max=7.00; }
+    else { min=7.01; max=10.00; }
+    const val = min + Math.random()*(max-min);
+    return Math.max(1, Math.min(10, val));
+  }
+  function signalLabel(x){
+    if (x < 2.0) return {t:'Low', c:'#e26b6b'};
+    if (x < 3.5) return {t:'Medium', c:'#f3b84b'};
+    if (x < 6.0) return {t:'High', c:'#6ad39a'};
+    return {t:'Ultra', c:'#7fd6ff'};
+  }
+  function progressFromMultiplier(x){
+    const t = (Math.log(x) - Math.log(1)) / (Math.log(10) - Math.log(1));
+    return Math.min(0.95, Math.max(0.06, 0.06 + t*0.89));
+  }
+  const fmt = x => x.toFixed(2) + 'x';
+
+  let lock = false;
+  btn.addEventListener('click', () => {
+    if (lock) return;
+    lock = true; btn.style.opacity = .85;
+
+    // reset
+    climb.style.setProperty('--p', 0);
+    jet.style.setProperty('--p', 0);
+    jet.style.opacity = 0;
+    big.textContent = '?';
+    quality.textContent = 'Signal: —';
+
+    const mult = weightedMultiplier();
+    const p = progressFromMultiplier(mult);
+
+    setTimeout(() => {
+      climb.style.setProperty('--p', p);
+      jet.style.setProperty('--p', p);
+      jet.style.opacity = 1;
+
+      setTimeout(() => {
+        big.textContent = fmt(mult);
+        big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump');
+
+        const s = signalLabel(mult);
+        quality.textContent = 'Signal: ' + s.t;
+
+        // финальное дотягивание клина до правого края (форма через clip-path)
+        requestAnimationFrame(() => {
+          climb.style.clipPath =
+            `polygon(0% 100%, 0% 100%, calc(${p*100}% ) calc(${100 - p*80}% ), 100% 100%)`;
+        });
+
+        lock = false; btn.style.opacity = 1;
+      }, 940);
+    }, 260);
+  });
+</script>
+</body>
+</html>
