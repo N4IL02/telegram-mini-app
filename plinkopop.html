@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0b1320" />
+<title>Plinko Pop Signal</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root {
+    --bg-color: #0b1320;
+    --card-bg: #13151f;
+    --text-white: #ffffff;
+    
+    /* Цвета риска */
+    --risk-low: #4cd964;
+    --risk-med: #9e00ff;
+    --risk-high: #ff2d55;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    margin: 0;
+    background-color: var(--bg-color);
+    font-family: 'Inter', sans-serif;
+    color: var(--text-white);
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    min-height: 100vh;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* --- HEADER --- */
+  .top-bar {
+    background: #111a2b;
+    border: 1px solid rgba(53, 208, 255, 0.15);
+    border-radius: 20px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .back-btn {
+    background: #1a273a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 8px 16px;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .back-icon { width: 8px; height: 12px; fill: white; }
+  .profile-icon { width: 32px; height: 32px; border-radius: 50%; }
+  .bot-name { font-weight: 800; font-size: 16px; letter-spacing: 0.3px; }
+
+  /* --- GAME CARD --- */
+  .game-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 20px;
+    padding: 16px 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Canvas */
+  canvas {
+    display: block;
+    margin-bottom: 12px;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Ряд коэффициентов */
+  .multipliers-row {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    padding: 0 4px;
+    margin-bottom: 16px;
+  }
+
+  .mult-box {
+    flex: 1;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 8px; /* Чуть меньше шрифт, чтобы влезло 1000 */
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: transform 0.2s, filter 0.2s, background-color 0.3s;
+  }
+  
+  .mult-box.active {
+    transform: scale(1.3) translateY(-5px);
+    filter: brightness(1.5);
+    border: 1px solid #fff;
+    z-index: 10;
+  }
+
+  /* --- RISK SELECTOR --- */
+  .risk-selector {
+    display: flex;
+    background: #1a1d2e;
+    padding: 4px;
+    border-radius: 12px;
+    width: 100%;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .risk-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #888;
+    padding: 8px 0;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .risk-btn.active {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  /* --- CONTROLS --- */
+  .controls-area { width: 100%; }
+
+  .main-btn {
+    width: 100%; height: 56px;
+    border: none; border-radius: 12px;
+    background: #333; /* Default */
+    color: white; font-size: 18px; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: background 0.3s, transform 0.1s, box-shadow 0.3s;
+  }
+  .main-btn:active { transform: scale(0.98); }
+  
+  .spinner {
+    width: 24px; height: 24px; border: 3px solid #fff;
+    border-top-color: transparent; border-radius: 50%;
+    margin: 0 auto;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="top-bar">
+    <a href="index.html" class="back-btn">
+      <svg class="back-icon" viewBox="0 0 10 16"><path d="M9 1L2 8L9 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+      Back
+    </a>
+    <img src="telegram_icon.png" alt="TG" class="profile-icon">
+    <div class="bot-name">@master_mines_bot</div>
+  </div>
+
+  <div class="game-card">
+    <canvas id="plinkoCanvas" width="340" height="300"></canvas>
+    
+    <div class="multipliers-row" id="multRow"></div>
+
+    <div class="risk-selector">
+        <button class="risk-btn" onclick="setRisk('low')" id="btnLow">Low</button>
+        <button class="risk-btn active" onclick="setRisk('medium')" id="btnMed">Medium</button>
+        <button class="risk-btn" onclick="setRisk('high')" id="btnHigh">High</button>
+    </div>
+
+    <div class="controls-area">
+      <button class="main-btn" id="predictBtn">
+        <span id="btnText">GET SIGNAL</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.expand();
+
+  const canvas = document.getElementById('plinkoCanvas');
+  const ctx = canvas.getContext('2d');
+  const multRow = document.getElementById('multRow');
+  const predictBtn = document.getElementById('predictBtn');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('spinner');
+  
+  // Данные по рискам (из скринов)
+  const risks = {
+      low: {
+          vals: [16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.4, 1.4, 2, 9, 16],
+          color: '#4cd964', // Green
+          shadow: 'rgba(76, 217, 100, 0.4)',
+          // Цвета ячеек (центр -> край)
+          cellCenter: '#2e5c35',
+          cellEdge: '#1a331d' 
+      },
+      medium: {
+          vals: [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
+          color: '#9e00ff', // Purple
+          shadow: 'rgba(158, 0, 255, 0.4)',
+          cellCenter: '#5c9ce6',
+          cellEdge: '#6b1b9a'
+      },
+      high: {
+          vals: [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
+          color: '#ff2d55', // Pink/Red
+          shadow: 'rgba(255, 45, 85, 0.4)',
+          cellCenter: '#5c2233',
+          cellEdge: '#8a1c36'
+      }
+  };
+
+  let currentRisk = 'medium';
+  let isRunning = false;
+
+  // Функция установки риска
+  function setRisk(level) {
+      if(isRunning) return; // Нельзя менять во время игры
+      currentRisk = level;
+      
+      // Обновляем кнопки UI
+      document.querySelectorAll('.risk-btn').forEach(b => b.classList.remove('active'));
+      if(level === 'low') document.getElementById('btnLow').classList.add('active');
+      if(level === 'medium') document.getElementById('btnMed').classList.add('active');
+      if(level === 'high') document.getElementById('btnHigh').classList.add('active');
+
+      // Обновляем стиль кнопки Predict
+      const r = risks[level];
+      predictBtn.style.background = r.color;
+      predictBtn.style.boxShadow = `0 4px 20px ${r.shadow}`;
+
+      // Перерисовываем нижний ряд
+      multRow.innerHTML = '';
+      r.vals.forEach((val, i) => {
+          const div = document.createElement('div');
+          div.className = 'mult-box';
+          div.innerText = val;
+          div.id = `mult-${i}`;
+          
+          // Градиент цвета в зависимости от риска
+          // Простая логика: чем дальше от центра, тем темнее/насыщеннее
+          const dist = Math.abs(i - 8);
+          const opacity = 0.3 + (dist / 8) * 0.7; // 0.3 центр -> 1.0 края
+          
+          // Базовый цвет берем из настройки риска
+          div.style.backgroundColor = interpolateColor(r.cellCenter, r.cellEdge, dist/8);
+          
+          multRow.appendChild(div);
+      });
+  }
+  
+  // Простая интерполяция цветов (для красоты плашек)
+  function interpolateColor(c1, c2, factor) {
+      // Это заглушка, можно просто менять прозрачность.
+      // Для простоты вернем цвет риска с разной прозрачностью
+      return risks[currentRisk].color + Math.floor((0.2 + factor * 0.8) * 255).toString(16).padStart(2,'0');
+  }
+
+  // Параметры Canvas
+  const rows = 16;
+  const centerX = canvas.width / 2;
+  const startY = 30;
+  const spacingY = 16; 
+  const spacingX = 18; 
+  
+  function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#4a4d5a';
+      
+      for(let row = 0; row < rows; row++) {
+          const pinsInRow = row + 3; 
+          const y = startY + row * spacingY;
+          for(let col = 0; col < pinsInRow; col++) {
+              const x = centerX - ((pinsInRow - 1) * spacingX / 2) + col * spacingX;
+              ctx.beginPath();
+              ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+          }
+      }
+  }
+
+  let ball = { x: 0, y: 0, active: false };
+
+  // УМНАЯ ЛОГИКА ПРОГНОЗА
+  function getTargetIndex() {
+      const r = Math.random();
+      
+      if (currentRisk === 'low') {
+          // Low: Часто падают зеленые (центр), но и 16x (края) выпадают реально
+          // Центр (7-9) - 40%
+          if(r < 0.4) return 7 + Math.floor(Math.random()*3);
+          // Средние (4-6, 10-12) - 40%
+          if(r < 0.8) return (r < 0.6) ? (4 + Math.floor(Math.random()*3)) : (10 + Math.floor(Math.random()*3));
+          // Края (0-3, 13-16) - 20%
+          return (r < 0.9) ? (Math.floor(Math.random()*4)) : (13 + Math.floor(Math.random()*4));
+      } 
+      else if (currentRisk === 'medium') {
+          // Medium: Классика, в основном центр, края редко
+          // Центр (6-10) - 60%
+          if(r < 0.6) return 6 + Math.floor(Math.random()*5);
+          // Средние - 30%
+          if(r < 0.9) return (r < 0.75) ? (3 + Math.floor(Math.random()*3)) : (11 + Math.floor(Math.random()*3));
+          // Края - 10%
+          return (r < 0.95) ? (Math.floor(Math.random()*3)) : (14 + Math.floor(Math.random()*3));
+      } 
+      else {
+          // High: Очень сложно поймать 1000x. В основном падает 0.2 (центр)
+          // Центр (6-10) - 80% (проигрыш/мелкий выигрыш)
+          if(r < 0.8) return 6 + Math.floor(Math.random()*5);
+          // Средние - 15%
+          if(r < 0.95) return (r < 0.88) ? (3 + Math.floor(Math.random()*3)) : (11 + Math.floor(Math.random()*3));
+          // Края (Джекпот 1000x) - 5%
+          return (r < 0.975) ? 0 : 16; 
+      }
+  }
+
+  predictBtn.addEventListener('click', () => {
+      if(isRunning) return;
+      isRunning = true;
+      
+      btnText.style.display = 'none';
+      spinner.style.display = 'block';
+      predictBtn.style.opacity = 0.8;
+      
+      document.querySelectorAll('.mult-box').forEach(b => b.classList.remove('active'));
+
+      setTimeout(() => {
+          spinner.style.display = 'none';
+          btnText.style.display = 'block';
+          btnText.innerText = "DROPPING...";
+          
+          const targetIndex = getTargetIndex();
+          animateBall(targetIndex);
+      }, 500);
+  });
+
+  function animateBall(targetIndex) {
+      ball.active = true;
+      ball.x = centerX + (Math.random()*4 - 2);
+      ball.y = startY - 10;
+      
+      const lastRowPins = rows - 1 + 3; 
+      const lastRowY = startY + (rows - 1) * spacingY;
+      const lastRowStartX = centerX - ((lastRowPins - 1) * spacingX / 2);
+      const targetX = lastRowStartX + (targetIndex * spacingX) + (spacingX / 2);
+
+      let startTime = null;
+      const duration = 2000;
+
+      function step(timestamp) {
+          if(!startTime) startTime = timestamp;
+          const progress = (timestamp - startTime) / duration;
+          
+          if(progress >= 1) {
+              finish(targetIndex);
+              return;
+          }
+          
+          ball.y = (startY - 10) + ((lastRowY + 20) - (startY - 10)) * progress;
+          
+          const currentLinearX = centerX + (targetX - centerX) * progress;
+          const wobble = Math.sin(progress * Math.PI * 30) * (spacingX/2) * (1 - progress); 
+          
+          ball.x = currentLinearX + wobble;
+
+          drawFrame();
+          requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+  }
+
+  function drawFrame() {
+      drawBoard();
+      if(ball.active) {
+          ctx.beginPath();
+          ctx.fillStyle = risks[currentRisk].color; // Цвет шарика под риск
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = risks[currentRisk].color;
+          ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+      }
+  }
+
+  function finish(index) {
+      ball.active = false;
+      drawFrame();
+      
+      const box = document.getElementById(`mult-${index}`);
+      if(box) box.classList.add('active');
+      
+      isRunning = false;
+      btnText.innerText = "GET SIGNAL";
+      predictBtn.style.opacity = 1;
+  }
+
+  // Init
+  setRisk('medium'); // Default
+  drawBoard();
+
+</script>
+
+</body>
+</html>

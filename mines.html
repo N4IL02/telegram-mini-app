@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#0b1320" />
 <title>MASTER MINES BOT — Mines</title>
 
-<!-- Telegram WebApp SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
@@ -72,7 +71,6 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
-  /* КНОПКА НАЗАД — добавлено */
   .back{
     margin-right:4px;
     height:30px; padding:0 10px;
@@ -194,7 +192,6 @@
 <body>
   <div class="shell">
     <div class="top">
-      <!-- Кнопка назад (добавлено) -->
       <button class="back" onclick="location.href='index.html'" aria-label="Back to menu">
         <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#eaf6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Back
@@ -230,10 +227,6 @@
   let trapCount = 3;
   let cells = [];
 
-  // Диапазон доли подсказок от числа безопасных клеток
-  const HINT_MIN_RATIO = 0.35;
-  const HINT_MAX_RATIO = 0.65;
-
   function initGrid(){
     gridEl.innerHTML = '';
     cells = [];
@@ -264,34 +257,24 @@
   });
 
   document.getElementById('btn-play').addEventListener('click', () => {
-    // очистка
+    // 1. Очистка старых звезд
     cells.forEach(el => el.classList.remove('safe','star'));
 
     const total = SIZE*SIZE;
 
-    // ставим ловушки
+    // 2. Генерируем случайные индексы для МИН (ловушек)
+    // Эти клетки мы НЕ будем подсвечивать
     const trapIdx = new Set(pickUnique(total, trapCount));
 
-    // собираем безопасные индексы
+    // 3. Собираем индексы БЕЗОПАСНЫХ клеток
+    // (все клетки, которые не попали в trapIdx)
     const safe = [];
-    for (let i=0;i<total;i++){
+    for (let i=0; i<total; i++){
       if (!trapIdx.has(i)) safe.push(i);
     }
 
-    // случайно выбираем ТОЛЬКО ЧАСТЬ безопасных клеток для подсказки
-    const minHints = Math.max(1, Math.floor(safe.length * HINT_MIN_RATIO));
-    const maxHints = Math.max(minHints, Math.floor(safe.length * HINT_MAX_RATIO));
-    const hintCount = Math.floor(Math.random() * (maxHints - minHints + 1)) + minHints;
-
-    // перемешаем safe и берём первые hintCount
-    for (let i=safe.length-1; i>0; i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [safe[i], safe[j]] = [safe[j], safe[i]];
-    }
-    const hintIdx = safe.slice(0, hintCount);
-
-    // подсветим только hintIdx
-    hintIdx.forEach(i => cells[i].classList.add('safe','star'));
+    // 4. Подсвечиваем ВСЕ безопасные клетки
+    safe.forEach(i => cells[i].classList.add('safe','star'));
   });
 
   initGrid();

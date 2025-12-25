@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0b1320" />
+<title>MASTER MINES BOT — Rocket Queen</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root{
+    /* Основные цвета оболочки (как в твоем Index) */
+    --bg: #0b1320;
+    --card: #0f1a2b;
+    --shadow: rgba(0,0,0,.55);
+    
+    /* Цвета Rocket Queen */
+    --rq-purple: #6a0dad;
+    --rq-pink: #d633ff;
+    --rq-orange: #ff8c00;
+    --rq-yellow: #ffcc00;
+    
+    --text-white: #e8f5ff;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);}
+  body{
+    margin:0; color:var(--text-white);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    padding:16px;
+    background:
+      radial-gradient(900px 600px at 50% -150px, #240b36 0, rgba(36,11,54,0) 55%), /* Фиолетовый оттенок сверху */
+      radial-gradient(600px 420px at -200px 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
+      var(--bg);
+  }
+
+  .shell{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:14px; animation:fadeIn .35s ease both; }
+
+  /* --- ВЕРХНЯЯ ПАНЕЛЬ (как в твоем примере) --- */
+  .top{
+    background:linear-gradient(180deg, #181024 0%, #0c182b 100%);
+    border:1px solid rgba(214, 51, 255, 0.15); /* Розовая обводка */
+    border-radius:16px;
+    padding:10px 12px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 20px 50px -20px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .top img{ width:28px;height:28px;border-radius:50%;
+    box-shadow:0 0 0 2px rgba(214, 51, 255, 0.1);
+  }
+  .title{ font-weight:800; letter-spacing:.2px; font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .back{
+    margin-right:4px; height:30px; padding:0 10px;
+    border-radius:10px; border:1px solid rgba(255,255,255,.1);
+    background:linear-gradient(180deg,#2a1f3d,#1a1329);
+    color:#eaf6ff; font-weight:800; letter-spacing:.3px;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    transition:all .15s ease;
+  }
+  .back:active{ transform:translateY(1px) }
+
+  /* --- ОСНОВНАЯ КАРТОЧКА --- */
+  .card{
+    background:linear-gradient(180deg, #1a1029, #0a1527);
+    border:1px solid rgba(214, 51, 255, 0.2); /* Свечение границы */
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 30px 70px -25px var(--shadow), inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+
+  /* --- ИГРОВОЕ ПОЛЕ (Визуал Rocket Queen) --- */
+  .scene{
+    position:relative; height:280px; border-radius:16px; overflow:hidden;
+    /* Градиент как в игре: фиолетовый -> оранжевый */
+    background: linear-gradient(160deg, #5e1882 0%, #94308a 40%, #ff7b00 100%);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+  }
+
+  /* Звезды/частицы на фоне */
+  .star {
+    position: absolute; width: 2px; height: 2px; background: white; border-radius: 50%;
+    opacity: 0.6; animation: drift linear infinite;
+  }
+
+  /* Девушка на ракете */
+  .character-wrap {
+    position: absolute; left: 20px; bottom: 20px;
+    width: 140px; height: auto;
+    transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 10;
+  }
+  .character-img {
+    width: 100%; height: auto;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+    animation: float 3s ease-in-out infinite; /* Покачивание */
+  }
+
+  /* Большой текст коэффициента */
+  .multiplier-box {
+    position: absolute; inset: 0; display: flex; flex-direction: column; 
+    justify-content: center; align-items: center; z-index: 20;
+  }
+  .multiplier-val {
+    font-size: 68px; font-weight: 900; color: #ffffff;
+    text-shadow: 0 4px 0 #ffaa00, 0 0 30px rgba(255, 170, 0, 0.6);
+    transform: scale(0.9); opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .multiplier-val.show { opacity: 1; transform: scale(1); }
+  
+  .signal-text {
+    margin-top: 8px; font-size: 14px; font-weight: 700;
+    background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 20px;
+    backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2);
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.4s ease 0.2s;
+  }
+  .signal-text.show { opacity: 1; transform: translateY(0); }
+
+  /* --- УПРАВЛЕНИЕ --- */
+  .controls{ margin-top:14px; }
+  .play-btn{
+    width: 100%; height:56px; border:none; border-radius:14px; cursor:pointer;
+    font-size: 18px; font-weight:900; letter-spacing:.5px; color:#fff;
+    text-transform: uppercase;
+    /* Градиент кнопки под стиль игры */
+    background: linear-gradient(90deg, #8a2be2, #d633ff); 
+    box-shadow: 0 10px 30px -10px rgba(214, 51, 255, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+    position:relative; overflow:hidden;
+    transition: transform .1s, filter .2s;
+  }
+  .play-btn:active{ transform:translateY(2px); }
+  .play-btn:hover{ filter: brightness(1.1); }
+  
+  /* Блик на кнопке */
+  .play-btn::after {
+    content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: 0.5s;
+  }
+  .play-btn:hover::after { left: 100%; }
+
+  @keyframes float { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-400px); } }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+  
+  /* Классы для анимации полета */
+  .flying .character-wrap {
+    transform: translate(120px, -60px) scale(1.1); /* Летит вправо вверх */
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <button class="back" onclick="location.href='index.html'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </button>
+      <img src="telegram_icon.png" alt="TG" />
+      <div class="title">@master_mines_bot</div>
+    </div>
+
+    <div class="card">
+      <div class="scene" id="scene">
+        <div class="star" style="top:20%; left:80%; animation-duration: 4s;"></div>
+        <div class="star" style="top:60%; left:90%; animation-duration: 3s;"></div>
+        <div class="star" style="top:10%; left:50%; animation-duration: 5s;"></div>
+        
+        <div class="character-wrap" id="char">
+            <img src="rocket_girl.png" alt="Rocket Queen" class="character-img" id="charImg">
+        </div>
+
+        <div class="multiplier-box">
+            <div class="multiplier-val" id="resultText">x1.00</div>
+            <div class="signal-text" id="signalText">WAITING FOR SIGNAL</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="play-btn" id="btn">GET SIGNAL</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.expand();
+
+  const btn = document.getElementById('btn');
+  const resultText = document.getElementById('resultText');
+  const signalText = document.getElementById('signalText');
+  const scene = document.getElementById('scene');
+  const char = document.getElementById('char');
+
+  // Генерация логики (как в Lucky Jet)
+  function getWeightedRandom() {
+    const r = Math.random();
+    let min, max;
+    if (r < 0.50) { min=1.10; max=1.90; } // Часто падают мелкие
+    else if (r < 0.80) { min=2.00; max=4.50; } // Средние
+    else { min=5.00; max=12.00; } // Джекпот
+    return (Math.random() * (max - min) + min).toFixed(2);
+  }
+
+  let isAnimating = false;
+
+  btn.addEventListener('click', () => {
+    if (isAnimating) return;
+    isAnimating = true;
+    
+    // 1. Сброс
+    scene.classList.remove('flying');
+    resultText.classList.remove('show');
+    signalText.classList.remove('show');
+    btn.style.opacity = '0.7';
+    btn.innerText = "CALCULATING...";
+
+    // 2. Старт анимации полета (через небольшую задержку)
+    setTimeout(() => {
+      scene.classList.add('flying'); // Персонаж улетает
+      
+      // Имитация вычислений
+      setTimeout(() => {
+        const val = getWeightedRandom();
+        
+        // 3. Показ результата
+        resultText.innerText = "x" + val;
+        resultText.classList.add('show');
+        
+        signalText.innerText = val < 2.0 ? "SAFE BET" : (val < 5.0 ? "GOOD SIGNAL" : "JACKPOT!");
+        signalText.style.color = val < 2.0 ? "#9fd1ff" : (val < 5.0 ? "#ffd700" : "#ff3366");
+        signalText.classList.add('show');
+
+        btn.innerText = "GET SIGNAL";
+        btn.style.opacity = '1';
+        isAnimating = false;
+        
+        // Возврат персонажа на исходную позицию через 3 секунды, если не нажали снова
+        setTimeout(() => {
+            if(!isAnimating) scene.classList.remove('flying');
+        }, 3000);
+
+      }, 1200); // Время полета до появления цифр
+    }, 100);
+  });
+  
+  // Дополнительно: динамические звезды
+  function createStars() {
+      for(let i=0; i<15; i++) {
+          let s = document.createElement('div');
+          s.className = 'star';
+          s.style.top = Math.random()*100 + '%';
+          s.style.left = Math.random()*100 + '%';
+          s.style.animationDuration = (2 + Math.random()*3) + 's';
+          s.style.opacity = Math.random();
+          scene.appendChild(s);
+      }
+  }
+  createStars();
+
+</script>
+</body>
+</html>

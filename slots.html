@@ -10,19 +10,19 @@
     --bg:#0b1320; --card:#0f1a2b; --panel:#0e1728; --panel2:#0a1322;
     --stroke:rgba(53,208,255,.18); --stroke2:rgba(53,208,255,.12);
     --accent:#ffb03a; --accent2:#ffd36b; --muted:#8ba5c7;
+    --text:#e8f5ff;
   }
   *{box-sizing:border-box}
   html,body{height:100%;}
   body{
-    margin:0; color:#e8f5ff; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    margin:0; color:var(--text); font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
     background:
       radial-gradient(900px 600px at 50% -150px, #152742 0, rgba(21,39,66,0) 55%),
       radial-gradient(600px 420px at -200px 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
-      radial-gradient(700px 500px at 120% 100%, #0d1a30 0, rgba(13,26,48,0) 60%),
       var(--bg);
     display:flex; justify-content:center; align-items:flex-start; padding:16px;
   }
-  .shell{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:16px; }
+  .shell{ width:100%; max-width:460px; display:flex; flex-direction:column; gap:16px; position: relative; }
 
   /* Topbar */
   .topbar{ background:linear-gradient(180deg, #102036 0%, #0c182b 100%); border:1px solid var(--stroke2); border-radius:18px; padding:10px 12px; box-shadow:0 20px 50px -20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05); display:flex; align-items:center; gap:10px; justify-content:space-between; }
@@ -30,24 +30,121 @@
   .back:active{ filter:brightness(1.08) }
   .tgbadge{ display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:14px; background:linear-gradient(180deg, #0f1f33, #0c182b); border:1px solid var(--stroke2); font-weight:900; letter-spacing:.2px; }
   .tgicon{ width:32px; height:32px; border-radius:50%; display:block; box-shadow:0 0 0 6px rgba(53,208,255,.06), 0 8px 20px -8px rgba(53,208,255,.45); }
-  .tgicon svg{ width:18px; height:18px; }
 
-  /* Select */
-  .select{ width:100%; background:#0b1526; border:1px solid var(--stroke); border-radius:12px; color:#eaf2ff; padding:12px; font-weight:700; outline:none; }
+  /* --- CUSTOM SEARCHABLE SELECT --- */
+  .custom-select {
+    position: relative;
+    width: 100%;
+  }
+
+  .select-trigger {
+    background: #0b1526;
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 14px;
+    color: #eaf2ff;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .select-trigger::after {
+    content: '▼';
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .select-trigger.active {
+    border-color: var(--accent);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .options-container {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: #0e1a2e;
+    border: 1px solid var(--stroke);
+    border-top: none;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    max-height: 300px;
+  }
+  .options-container.open { display: flex; }
+
+  .search-box {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: #0b1320;
+  }
+  .search-box input {
+    width: 100%;
+    background: #152033;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+
+  .options-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .option {
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+    transition: background 0.1s;
+  }
+  .option:hover { background: rgba(53,208,255,0.1); }
+  .option.selected { background: rgba(53,208,255,0.2); color: #fff; }
+  
+  .options-list::-webkit-scrollbar { width: 6px; }
+  .options-list::-webkit-scrollbar-track { background: #0b1320; }
+  .options-list::-webkit-scrollbar-thumb { background: #2b3b55; border-radius: 3px; }
 
   /* Uploader */
   .drop{ position:relative; border-radius:16px; background:linear-gradient(180deg,#0b1424,#0a1120); border:2px dashed var(--stroke); height:200px; display:grid; place-items:center; text-align:center; padding:12px; }
   .drop .hint{ color:#a8c1e5; font-size:14px; }
   .drop input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
 
-  /* Preview */
+  /* Preview & Overlay */
   .preview{ position:relative; border-radius:16px; overflow:hidden; border:2px dashed var(--stroke); }
   .preview img{ width:100%; height:100%; object-fit:cover; display:block; filter:none; transition:filter .25s ease; }
   .preview.blurred img{ filter:blur(8px) saturate(1.1) brightness(1.05); }
+  
   .overlay{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:10px; }
-  .overlay .line{ font-weight:900; letter-spacing:.5px; text-shadow:0 3px 20px rgba(0,0,0,.8); }
-  .overlay .chance{ font-size:36px; color:#fff; text-shadow:0 0 18px rgba(255,255,255,.3); }
-  .overlay .spins{ font-size:28px; color:#ffd36b; margin-top:8px; text-shadow:0 0 18px rgba(255,179,58,.4); }
+  
+  .overlay .line {
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
+  }
+  .overlay .chance {
+      font-size: 46px;
+      color: #fff;
+      letter-spacing: 1px;
+      text-shadow: 
+          3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 
+          0 0 25px rgba(255,255,255,0.5);
+      margin-bottom: 4px;
+  }
+  .overlay .spins {
+      font-size: 32px;
+      color: var(--accent2);
+      letter-spacing: 0.5px;
+      text-shadow: 
+          2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000,
+          0 0 20px rgba(255, 179, 58, 0.5);
+  }
 
   /* Buttons */
   .btn{ height:56px; border-radius:14px; border:none; font-weight:900; font-size:16px; cursor:pointer; }
@@ -55,12 +152,10 @@
   .btn.secondary{ background:#0b1424; color:#cfe1ff; border:1px solid var(--stroke); display:flex; align-items:center; justify-content:center; }
   .btn:disabled{ opacity:.45; cursor:not-allowed; }
 
-  .spacer{ height:6px; }
 </style>
 </head>
 <body>
   <div class="shell">
-    <!-- Top line -->
     <div class="topbar">
       <a class="back" href="index.html" id="backBtn">◀ Back</a>
       <div class="tgbadge">
@@ -69,30 +164,16 @@
       </div>
     </div>
 
-    <!-- SELECT GAME -->
-    <select class="select" id="gameSelect" aria-label="Select slot">
-      <option value="">Choose a slot…</option>
-      <option>Coin Gobbler</option>
-      <option>Alien Fruits</option>
-      <option>Luck of Tiger</option>
-      <option>Zeus vs Hades</option>
-      <option>Luck of Panda</option>
-      <option>Santa Mummy</option>
-      <option>Mummyland Treasures</option>
-      <option>Gates of Olympus 1000</option>
-      <option>Pirates Pub</option>
-      <option>Sugar Rush</option>
-      <option>Sugar Rush 1000</option>
-      <option>Sun of Egypt 3</option>
-      <option>Sweet Bonanza 1000</option>
-      <option>The Dog House</option>
-      <option>Wild West Gold</option>
-      <option>Don Catleone</option>
-      <option>Octo Attack</option>
-      <option>Bonanza Billion</option>
-    </select>
+    <div class="custom-select">
+        <div class="select-trigger" id="selectTrigger">Choose a slot...</div>
+        <div class="options-container" id="optionsContainer">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search game..." autocomplete="off">
+            </div>
+            <div class="options-list" id="optionsList"></div>
+        </div>
+    </div>
 
-    <!-- UPLOAD -->
     <div id="uploadWrap" class="drop">
       <div class="hint">
         <div style="font-size:24px;opacity:.9;line-height:1">⬆</div>
@@ -101,7 +182,6 @@
       <input id="fileInput" type="file" accept="image/*" />
     </div>
 
-    <!-- PREVIEW -->
     <div id="preview" class="preview" style="display:none;height:220px;">
       <img id="previewImg" alt="preview" />
       <div class="overlay">
@@ -117,7 +197,46 @@
 <script>
   if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.expand(); }
 
-  const gameSelect = document.getElementById('gameSelect');
+  // --- DATA ---
+  const GAME_LIST = [
+    "2025 Hit Slot", "3 Crazy Tikis", "3 Hot Chillies", "3 Plucky Hens", 
+    "777 Full Hot", "Alien Fruits", "Avia Rush", "Aztec Fire 2", "Aztec Maiden", 
+    "Bacon's Bank", "Balloon", "Big Win x25", "Billie Wild", "Blasting Rubies", 
+    "Blazing Crown", "Blood Diamond", "Bonanza Billion", "Book of Dead", 
+    "Buffalo Gold Canyon", "Buffalo's Sun", "Buffalo's Sun 2", "Buffalo's Sun 3", 
+    "Candy Palace", "Cash the Gold", "Cash'n Fruits", "Cash'n Fruits 100", 
+    "Code of Fortune", "Coin Gobbler", "Coin Lamp", "Coin Up Lightning", 
+    "Coin Volcano", "Coin Win", "Coins of Alkemor", "Crash", "Crasher", 
+    "Diamond Explosion 7s", "Dogmasons Megawoof", "Don Catleone", 
+    "Egypt Sphere", "Extra Chilli", "Fiery Slots Cash Mesh", "Fire in the Hole", 
+    "Flight Mode", "Fortune 27 Ways", "Fortune Hold and Win", "Fortune Ox", 
+    "Fortune Rabbit", "Fortune Tiger", "Frozen Crown", "Fruits & Coins", 
+    "Gates of Olympus 1000", "Gator Hunters", "Gems Sky", "Gold Nugget Rush", 
+    "Golden Dragon Deluxe", "Golden Dragon Inferno", "Gonzo's Quest", 
+    "Hell Hot 100", "Hold the Gold", "Hot Deco", "Immortal Romance", "In Jazz", 
+    "Iron Bank", "Jolly Santa", "Kingdom Crown", "Lava Coins", "Leprechaun Riches", 
+    "Luck of Panda", "Luck of Tiger", "Lucky Streak 1000", "Lucky Streak 3", 
+    "Merry Scary Christmas", "Money Train 3", "Moneyfest", "Moon Princess 100", 
+    "More Magic Apple", "Mummyland Treasures", "Octo Attack", "Olympian Legends", 
+    "Only Coins", "Penalty Shoot-out: Super Cup", "Pho Sho", "Piggy Bank Cash", 
+    "Piñata Go Go", "Pirates Pub", "Power of Zeus", "Pump It", "Reactoonz 2", 
+    "Rocketon", "Royal Xmass 2", "Santa Mummy", "Santa the Slayer", 
+    "Snoop Dogg Dollars", "Star Light", "Sticky Coin", "Sugar Rush", 
+    "Sugar Rush 1000", "Sun Crown", "Sun of Egypt 3", "Super Hot Chilli", 
+    "Supreme Hot", "Sweet Bonanza 1000", "Sweet Dream Bonanza", 
+    "Sweet Dream Bonanza Claw", "Take the Shot", "Tessa Hunt and the Eye of Horus", 
+    "The Biggest Win x50", "The Dog House", "Tombstone No Mercy", 
+    "Ultimate Golden Dragon Inferno", "Ultra Fiery Slots", "Ultra Fresh", 
+    "Voodoo Charms", "Wasteland Riches", "Wild Bandito", "Wild Bounty Showdown", 
+    "Wild Piggy Bank", "Wild West Gold", "Zeus vs Hades", "Zeus vs Thanatos"
+  ].sort();
+
+  // --- UI ELEMENTS ---
+  const trigger = document.getElementById('selectTrigger');
+  const container = document.getElementById('optionsContainer');
+  const searchInput = document.getElementById('searchInput');
+  const list = document.getElementById('optionsList');
+  
   const fileInput  = document.getElementById('fileInput');
   const uploadWrap = document.getElementById('uploadWrap');
   const analyzeBtn = document.getElementById('analyzeBtn');
@@ -127,17 +246,80 @@
   const chanceLine = document.getElementById('chanceLine');
   const spinsLine  = document.getElementById('spinsLine');
 
+  let selectedGame = null;
   let file = null;
 
+  // --- DROPDOWN LOGIC ---
+  function renderOptions(filter = "") {
+    list.innerHTML = "";
+    const lowerFilter = filter.toLowerCase();
+    
+    GAME_LIST.forEach(game => {
+      if (game.toLowerCase().includes(lowerFilter)) {
+        const div = document.createElement('div');
+        div.className = 'option';
+        if (game === selectedGame) div.classList.add('selected');
+        div.textContent = game;
+        div.onclick = () => selectGame(game);
+        list.appendChild(div);
+      }
+    });
+
+    if (list.children.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'option';
+      div.style.color = '#888';
+      div.style.cursor = 'default';
+      div.textContent = 'No games found';
+      list.appendChild(div);
+    }
+  }
+
+  function selectGame(game) {
+    selectedGame = game;
+    trigger.textContent = game;
+    trigger.style.color = '#fff';
+    trigger.style.borderColor = 'rgba(53,208,255,.5)';
+    closeDropdown();
+    refreshAnalyzeState();
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    container.classList.toggle('open');
+    trigger.classList.toggle('active');
+    if(container.classList.contains('open')) {
+        searchInput.value = '';
+        renderOptions();
+        searchInput.focus();
+    }
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    renderOptions(e.target.value);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select')) {
+      closeDropdown();
+    }
+  });
+
+  function closeDropdown() {
+    container.classList.remove('open');
+    trigger.classList.remove('active');
+  }
+
+  renderOptions();
+
+  // --- ANALYZER LOGIC ---
   function canAnalyze(){
-    return !!(gameSelect.value && file);
+    return !!(selectedGame && file);
   }
 
   function refreshAnalyzeState(){
     analyzeBtn.disabled = !canAnalyze();
   }
-
-  gameSelect.addEventListener('change', refreshAnalyzeState);
 
   fileInput.addEventListener('change', (e)=>{
     const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
@@ -159,13 +341,17 @@
   });
 
   function hashString(input){
-    let h = 2166136261; for (let i=0;i<input.length;i++){ h ^= input.charCodeAt(i); h = Math.imul(h,16777619);} return (h>>>0)||1; }
-  function seededInt(min,max,seed){ let x=seed; x^=x<<13; x^=x>>>17; x^=x<<5; const u=(x>>>0)/0xFFFFFFFF; return Math.floor(u*(max-min+1))+min; }
+    let h = 2166136261; for (let i=0;i<input.length;i++){ h ^= input.charCodeAt(i); h = Math.imul(h,16777619);} return (h>>>0)||1; 
+  }
+  function seededInt(min,max,seed){ 
+    let x=seed; x^=x<<13; x^=x>>>17; x^=x<<5; const u=(x>>>0)/0xFFFFFFFF; return Math.floor(u*(max-min+1))+min; 
+  }
   function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
 
   analyzeBtn.addEventListener('click', ()=>{
     if (!canAnalyze()) return;
-    const seed = hashString(`${gameSelect.value}|${file.name}|${file.size}`);
+    
+    const seed = hashString(`${selectedGame}|${file.name}|${file.size}`);
     const spinsUntil = seededInt(15, 60, seed);
     const baseProb = 90 - (spinsUntil - 15) * (72 / 45);
     const jitter = seededInt(-7, 7, seed ^ 0xA5A5A5A5);
@@ -188,6 +374,7 @@
     uploadWrap.style.display = 'grid';
     file = null;
     fileInput.value = '';
+    
     analyzeBtn.style.display = 'block';
     againBtn.style.display = 'none';
     refreshAnalyzeState();
